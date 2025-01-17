@@ -54,6 +54,7 @@ function App() {
   const handleMouseUp = () => {
     setDrawing(false);
   };
+  
 
   return (
     <div>
