@@ -20,12 +20,36 @@ const isWithInElement = (x, y, element) => {
     const maxX = Math.max(x1, x2);
     const maxY = Math.max(y1, y2);
     return x >= minX && x <= maxX && y >= minY && y <= maxY;
-  } else {
+  } else if (type === 'line') {
+    const tolerance = 5; // Adjust tolerance for line detection
     const a = { x: x1, y: y1 };
     const b = { x: x2, y: y2 };
     const c = { x, y };
-    const offset = distance(a, b) - (distance(a, c) + distance(b, c));
-    return Math.abs(offset) < 1;
+    const distanceToLine = distanceFromPointToLine(a, b, c);
+    return distanceToLine < tolerance;
+  }
+};
+
+const distanceFromPointToLine = (a, b, c) => {
+  const numerator = Math.abs((b.y - a.y) * c.x - (b.x - a.x) * c.y + b.x * a.y - b.y * a.x);
+  const denominator = Math.sqrt(Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2));
+  return numerator / denominator;
+};
+
+const adjustTheElementcoordinate = (element) => {
+  const { type, x1, y1, x2, y2 } = element;
+  if (type === 'rectangle') {
+    const minX = Math.min(x1, x2);
+    const minY = Math.min(y1, y2);
+    const maxX = Math.max(x1, x2);
+    const maxY = Math.max(y1, y2);
+    return { x1: minX, y1: minY, x2: maxX, y2: maxY };
+  } else if (type === 'line') {
+    if (x1 < x2 || (x1 === x2 && y1 < y2)) {
+      return { x1, y1, x2, y2 };
+    } else {
+      return { x2, y2, x1, y1 };
+    }
   }
 };
 
@@ -72,15 +96,16 @@ function App() {
   };
 
   const handleMouseMove = (event) => {
-  
     const canvas = document.getElementById('canvas');
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    if (tool === "selection") {
+
+    if (tool === 'selection') {
       const element = getElementAtPosition(x, y, elements);
-      event.target.style.cursor = element ? "move" : "default";
+      event.target.style.cursor = element ? 'move' : 'default';
     }
+
     if (action === 'drawing') {
       const index = elements.length - 1;
       const { x1, y1, type } = elements[index];
@@ -109,6 +134,15 @@ function App() {
   };
 
   const handleMouseUp = () => {
+    const index = elements.length - 1;
+    const { id, type, x1, y1, x2, y2 } = elements[index];
+
+    if (action === 'drawing') {
+      const { x1: adjustedX1, y1: adjustedY1, x2: adjustedX2, y2: adjustedY2 } = adjustTheElementcoordinate({ x1, y1, x2, y2, type });
+      const newElement = createElement(id, adjustedX1, adjustedY1, adjustedX2, adjustedY2, type);
+      setElements((prevElements) => [...prevElements.slice(0, index), newElement]); // Update only the latest element
+    }
+
     setAction('none');
     setSelectedElement(null);
   };
